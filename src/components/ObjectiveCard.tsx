@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Trash2 } from 'lucide-react'
 import { useOkrStore } from '../store/store'
 import type { Cycle, Objective } from '../lib/types'
 import { computeObjective } from '../lib/selectors'
@@ -13,6 +13,7 @@ const LEVEL_LABEL = { company: 'Company', team: 'Team', individual: 'Individual'
 
 export function ObjectiveCard({ objective, cycle }: { objective: Objective; cycle: Cycle }) {
   const { objectives, keyResults, checkIns, people, teams, settings } = useOkrStore()
+  const deleteObjective = useOkrStore((s) => s.deleteObjective)
   const [expanded, setExpanded] = useState(false)
 
   const krs = keyResults.filter((k) => k.objectiveId === objective.id)
@@ -57,6 +58,22 @@ export function ObjectiveCard({ objective, cycle }: { objective: Objective; cycl
           className="w-48 shrink-0"
         />
         {isActive && <StatusChip status={computed.status} small />}
+        <button
+          type="button"
+          onClick={() => {
+            if (
+              window.confirm(
+                `Delete "${objective.title}" and all its key results and check-ins?`,
+              )
+            )
+              deleteObjective(objective.id)
+          }}
+          className="shrink-0 rounded-md p-1 text-ink-muted hover:bg-black/5 hover:text-status-critical"
+          aria-label={`Delete ${objective.title}`}
+          title="Delete objective"
+        >
+          <Trash2 size={14} />
+        </button>
       </div>
       {expanded && (
         <div className="border-t border-grid px-4 pb-2 pl-12">
