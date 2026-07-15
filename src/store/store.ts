@@ -12,6 +12,7 @@ import type {
   Team,
 } from '../lib/types'
 import { DEFAULT_SETTINGS } from '../lib/progress'
+import { inferCycleType } from '../lib/cycles'
 import { buildSeed } from '../data/seed'
 
 export interface OkrData {
@@ -103,7 +104,11 @@ export const useOkrStore = create<OkrState>()(
           )
           return {
             cycles: s.cycles.filter((c) => c.id !== id),
-            objectives: s.objectives.filter((o) => !objectiveIds.has(o.id)),
+            objectives: s.objectives
+              .filter((o) => !objectiveIds.has(o.id))
+              .map((o) =>
+                o.parentId && objectiveIds.has(o.parentId) ? { ...o, parentId: undefined } : o,
+              ),
             keyResults: s.keyResults.filter((k) => !krIds.has(k.id)),
             checkIns: s.checkIns.filter((c) => !krIds.has(c.keyResultId)),
             initiatives: s.initiatives.filter((i) => !krIds.has(i.keyResultId)),
@@ -273,7 +278,19 @@ export const useOkrStore = create<OkrState>()(
         }),
       resetToSeed: () => set({ ...buildSeed(), selectedCycleId: null }),
     }),
-    { name: 'northstar-okr-v1' },
+    {
+      name: 'northstar-okr-v1',
+      version: 2,
+      migrate: (persisted, version) => {
+        const state = persisted as OkrState
+        if (version < 2 && state?.cycles) {
+          state.cycles = state.cycles.map((c) =>
+            c.type ? c : { ...c, type: inferCycleType(c) },
+          )
+        }
+        return state
+      },
+    },
   ),
 )
 

@@ -14,8 +14,13 @@ findings are in `docs/RESEARCH.md`.
 ## 1. Domain model
 
 ### Cycle
-Time period OKRs live in (quarters by default, custom ranges allowed).
-`id, name, startDate, endDate, status: open | closed`
+Time period OKRs live in, with a horizon type — the nested dual cadence from the
+methodology research (annual strategic + quarterly tactical, plus custom ranges).
+`id, name, type: quarter | year | custom, startDate, endDate, status: open | closed`
+
+The cycle picker groups by horizon. Objectives in a shorter cycle may align to a
+parent objective in any overlapping longer-horizon cycle (quarter → year), and
+the alignment view shows the long-term layer above the selected cycle.
 
 ### Team & Person
 Flat org model: teams with a fixed palette color slot; people with a role and

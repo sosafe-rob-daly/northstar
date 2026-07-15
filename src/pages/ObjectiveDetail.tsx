@@ -188,7 +188,8 @@ export function ObjectiveDetail() {
           <h2 className="mb-2 text-sm font-semibold text-ink">Aligned objectives</h2>
           <Card className="divide-y divide-grid">
             {children.map((child) => {
-              const childComputed = computeObjective(child, objectives, keyResults, checkIns, cycle, settings)
+              const childCycle = cycles.find((c) => c.id === child.cycleId) ?? cycle
+              const childComputed = computeObjective(child, objectives, keyResults, checkIns, childCycle, settings)
               const childTeam = teams.find((t) => t.id === child.teamId)
               return (
                 <div key={child.id} className="flex items-center gap-3 px-4 py-2.5">
@@ -199,7 +200,10 @@ export function ObjectiveDetail() {
                     >
                       {child.title}
                     </Link>
-                    <p className="text-xs text-ink-muted">{childTeam?.name ?? LEVEL_LABEL[child.level]}</p>
+                    <p className="text-xs text-ink-muted">
+                      {childTeam?.name ?? LEVEL_LABEL[child.level]}
+                      {child.cycleId !== cycle.id ? ` · ${childCycle.name}` : ''}
+                    </p>
                   </div>
                   <ProgressWithLabel value={childComputed.progress} className="w-40 shrink-0" />
                   {child.lifecycle === 'active' && <StatusChip status={childComputed.status} small />}

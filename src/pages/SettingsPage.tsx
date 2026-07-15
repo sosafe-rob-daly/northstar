@@ -2,12 +2,15 @@ import { useRef, useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { Download, Lock, LockOpen, Plus, Trash2, Upload } from 'lucide-react'
 import { useOkrStore, exportData, type OkrData } from '../store/store'
+import type { CycleType } from '../lib/types'
+import { CYCLE_TYPE_LABEL } from '../lib/cycles'
 import { Button, Card, Field, inputClass } from '../components/ui'
 
 export function SettingsPage() {
   const store = useOkrStore()
   const { cycles, objectives, settings } = store
   const [cycleName, setCycleName] = useState('')
+  const [cycleType, setCycleType] = useState<CycleType>('quarter')
   const [cycleStart, setCycleStart] = useState('')
   const [cycleEnd, setCycleEnd] = useState('')
   const [message, setMessage] = useState('')
@@ -22,7 +25,13 @@ export function SettingsPage() {
       setMessage('The cycle must end after it starts.')
       return
     }
-    store.addCycle({ name: cycleName.trim(), startDate: cycleStart, endDate: cycleEnd, status: 'open' })
+    store.addCycle({
+      name: cycleName.trim(),
+      type: cycleType,
+      startDate: cycleStart,
+      endDate: cycleEnd,
+      status: 'open',
+    })
     setCycleName('')
     setCycleStart('')
     setCycleEnd('')
@@ -73,7 +82,12 @@ export function SettingsPage() {
               return (
                 <div key={cycle.id} className="flex items-center gap-3 px-4 py-2.5">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-ink">{cycle.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-ink">{cycle.name}</p>
+                      <span className="rounded-md bg-black/5 px-1.5 py-0.5 text-[11px] font-medium text-ink-secondary">
+                        {CYCLE_TYPE_LABEL[cycle.type]}
+                      </span>
+                    </div>
                     <p className="text-xs text-ink-muted">
                       {format(parseISO(cycle.startDate), 'MMM d, yyyy')} –{' '}
                       {format(parseISO(cycle.endDate), 'MMM d, yyyy')} · {count} objective
@@ -115,7 +129,7 @@ export function SettingsPage() {
                 </div>
               )
             })}
-          <div className="grid grid-cols-1 gap-2 px-4 py-3 sm:grid-cols-4">
+          <div className="grid grid-cols-1 gap-2 px-4 py-3 sm:grid-cols-5">
             <Field label="Name">
               <input
                 className={inputClass}
@@ -123,6 +137,17 @@ export function SettingsPage() {
                 onChange={(e) => setCycleName(e.target.value)}
                 placeholder="Q4 2026"
               />
+            </Field>
+            <Field label="Horizon">
+              <select
+                className={inputClass}
+                value={cycleType}
+                onChange={(e) => setCycleType(e.target.value as CycleType)}
+              >
+                <option value="quarter">Quarter</option>
+                <option value="year">Year (long-term)</option>
+                <option value="custom">Custom</option>
+              </select>
             </Field>
             <Field label="Starts">
               <input type="date" className={inputClass} value={cycleStart} onChange={(e) => setCycleStart(e.target.value)} />

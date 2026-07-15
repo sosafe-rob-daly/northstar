@@ -38,6 +38,10 @@ time in **Settings → Data**.
   updates capturing value + status + note + blocker, full history kept.
 - **Alignment** — directional alignment tree from company objectives down, with
   orphan detection (flagged, never forced).
+- **Time horizons** — cycles are quarters, years, or custom ranges; the cycle
+  picker groups them by horizon, quarterly objectives align up to long-term
+  annual objectives, and the alignment tree shows the annual layer above the
+  selected quarter.
 - **Close & grade** — Google-style 0.0–1.0 scoring prefilled from measured
   progress, objective score as the average, written reflection, and a mandatory
   postmortem when a committed objective closes below 1.0.

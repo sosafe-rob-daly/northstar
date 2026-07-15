@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Plus, Trash2, TriangleAlert } from 'lucide-react'
 import { useOkrStore } from '../store/store'
 import type { Id, KrDirection, MetricType, Objective, OkrLevel, ObjectiveType } from '../lib/types'
+import { CYCLE_GROUPS, longerHorizonCycles } from '../lib/cycles'
 import { Button, Field, Modal, inputClass } from './ui'
 
 interface KrDraft {
@@ -74,8 +75,10 @@ export function ObjectiveForm({
   })
   const [removedKrIds, setRemovedKrIds] = useState<Id[]>([])
 
-  // Parent candidates: same-cycle objectives, excluding self and own descendants
-  const parentOptions = useMemo(() => {
+  // Parent candidates: objectives in the same cycle plus objectives in
+  // overlapping longer-horizon cycles (quarter -> year), excluding self
+  // and own descendants. Grouped by cycle for the dropdown.
+  const parentGroups = useMemo(() => {
     const descendants = new Set<Id>()
     if (objective) {
       const collect = (id: Id) => {
@@ -84,8 +87,17 @@ export function ObjectiveForm({
       }
       collect(objective.id)
     }
-    return objectives.filter((o) => o.cycleId === cycleId && !descendants.has(o.id))
-  }, [objectives, cycleId, objective])
+    const selectedCycle = cycles.find((c) => c.id === cycleId)
+    const eligibleCycles = selectedCycle
+      ? [...longerHorizonCycles(selectedCycle, cycles), selectedCycle]
+      : []
+    return eligibleCycles
+      .map((c) => ({
+        cycle: c,
+        objectives: objectives.filter((o) => o.cycleId === c.id && !descendants.has(o.id)),
+      }))
+      .filter((g) => g.objectives.length > 0)
+  }, [objectives, cycles, cycleId, objective])
 
   const setKr = (index: number, patch: Partial<KrDraft>) =>
     setKrs((list) => list.map((kr, i) => (i === index ? { ...kr, ...patch } : kr)))
@@ -204,9 +216,17 @@ export function ObjectiveForm({
           </Field>
           <Field label="Cycle">
             <select className={inputClass} value={cycleId} onChange={(e) => setCycleId(e.target.value)}>
-              {cycles.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
+              {CYCLE_GROUPS.map((group) => {
+                const groupCycles = cycles.filter((c) => c.type === group.type)
+                if (groupCycles.length === 0) return null
+                return (
+                  <optgroup key={group.type} label={group.label}>
+                    {groupCycles.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </optgroup>
+                )
+              })}
             </select>
           </Field>
         </div>
@@ -220,8 +240,12 @@ export function ObjectiveForm({
           <Field label="Aligns to (parent objective)">
             <select className={inputClass} value={parentId} onChange={(e) => setParentId(e.target.value)}>
               <option value="">None</option>
-              {parentOptions.map((o) => (
-                <option key={o.id} value={o.id}>{o.title}</option>
+              {parentGroups.map((group) => (
+                <optgroup key={group.cycle.id} label={group.cycle.name}>
+                  {group.objectives.map((o) => (
+                    <option key={o.id} value={o.id}>{o.title}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </Field>

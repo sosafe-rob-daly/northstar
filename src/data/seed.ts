@@ -66,6 +66,7 @@ interface ObjectiveSpec {
 
 const Q3_DATES = ['2026-07-03', '2026-07-08', '2026-07-14']
 const Q2_DATES = ['2026-04-10', '2026-04-24', '2026-05-08', '2026-05-22', '2026-06-05', '2026-06-19']
+const Y2026_DATES = ['2026-02-13', '2026-03-13', '2026-04-10', '2026-05-08', '2026-06-12', '2026-07-10']
 
 function krValue(spec: KrSpec, point: TrailPoint): number {
   if (point.v !== undefined) return point.v
@@ -74,6 +75,93 @@ function krValue(spec: KrSpec, point: TrailPoint): number {
 }
 
 const SPECS: ObjectiveSpec[] = [
+  // ---------- 2026 annual (open, long-term) ----------
+  {
+    id: 'o-ann1',
+    title: 'Become the category leader in Europe',
+    description:
+      'The long-term bet for 2026: turn product momentum into undisputed leadership — revenue scale, customer love, and enterprise trust.',
+    level: 'company',
+    cycleId: 'cy-2026',
+    ownerId: 'p-mara',
+    type: 'aspirational',
+    lifecycle: 'active',
+    tags: ['strategy'],
+    dates: Y2026_DATES,
+    krs: [
+      {
+        id: 'kr-ann1-arr',
+        title: 'Grow ARR from €8M to €20M',
+        metricType: 'currency',
+        unit: '€',
+        direction: 'increase',
+        start: 8_000_000,
+        target: 20_000_000,
+        owner: 'p-sofia',
+        trail: [
+          { f: 0.08, status: 'on_track' },
+          { f: 0.15, status: 'on_track', note: 'Q1 closed at 105% of plan.' },
+          { f: 0.2, status: 'on_track' },
+          { f: 0.27, status: 'behind', note: 'Enterprise slippage from Q2 shows up here.' },
+          { f: 0.33, status: 'behind' },
+          { f: 0.37, status: 'behind', note: 'Need the mid-market machine to accelerate in H2.' },
+        ],
+      },
+      {
+        id: 'kr-ann1-nps',
+        title: 'Raise NPS from 35 to 55',
+        metricType: 'number',
+        unit: 'NPS',
+        direction: 'increase',
+        start: 35,
+        target: 55,
+        owner: 'p-amelie',
+        trail: [
+          { f: 0.1, status: 'on_track' },
+          { f: 0.15, status: 'on_track' },
+          { f: 0.2, status: 'on_track' },
+          { f: 0.25, status: 'behind', note: 'Onboarding detractors dragging the average.' },
+          { f: 0.28, status: 'behind' },
+          { f: 0.3, status: 'behind' },
+        ],
+      },
+      {
+        id: 'kr-ann1-certs',
+        title: 'Achieve SOC 2 Type II and ISO 27001',
+        metricType: 'boolean',
+        direction: 'increase',
+        start: 0,
+        target: 1,
+        owner: 'p-tomas',
+        trail: [
+          { v: 0, status: 'on_track' },
+          { v: 0, status: 'on_track' },
+          { v: 0, status: 'on_track' },
+          { v: 0, status: 'on_track', note: 'SOC 2 done; ISO 27001 stage-2 audit booked for October.' },
+          { v: 0, status: 'on_track' },
+          { v: 0, status: 'on_track' },
+        ],
+      },
+      {
+        id: 'kr-ann1-grr',
+        title: 'Keep gross revenue retention above 90%',
+        metricType: 'percent',
+        direction: 'stay_above',
+        start: 88,
+        target: 90,
+        owner: 'p-amelie',
+        trail: [
+          { v: 91, status: 'on_track' },
+          { v: 92, status: 'on_track' },
+          { v: 91.5, status: 'on_track' },
+          { v: 92, status: 'on_track' },
+          { v: 93, status: 'on_track' },
+          { v: 92.8, status: 'on_track' },
+        ],
+      },
+    ],
+  },
+
   // ---------- Q3 2026 (open) ----------
   {
     id: 'o-co1',
@@ -83,6 +171,7 @@ const SPECS: ObjectiveSpec[] = [
     level: 'company',
     cycleId: 'cy-q3-2026',
     ownerId: 'p-mara',
+    parentId: 'o-ann1',
     type: 'committed',
     lifecycle: 'active',
     tags: ['growth'],
@@ -147,6 +236,7 @@ const SPECS: ObjectiveSpec[] = [
     level: 'company',
     cycleId: 'cy-q3-2026',
     ownerId: 'p-mara',
+    parentId: 'o-ann1',
     type: 'aspirational',
     lifecycle: 'active',
     tags: ['product'],
@@ -663,6 +753,7 @@ const SPECS: ObjectiveSpec[] = [
     level: 'company',
     cycleId: 'cy-q2-2026',
     ownerId: 'p-mara',
+    parentId: 'o-ann1',
     type: 'committed',
     lifecycle: 'closed',
     tags: ['enterprise'],
@@ -864,6 +955,7 @@ export function buildSeed(): OkrData {
     {
       id: 'cy-q3-2026',
       name: 'Q3 2026',
+      type: 'quarter',
       startDate: '2026-07-01',
       endDate: '2026-09-30',
       status: 'open',
@@ -871,9 +963,18 @@ export function buildSeed(): OkrData {
     {
       id: 'cy-q2-2026',
       name: 'Q2 2026',
+      type: 'quarter',
       startDate: '2026-04-01',
       endDate: '2026-06-30',
       status: 'closed',
+    },
+    {
+      id: 'cy-2026',
+      name: '2026',
+      type: 'year',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      status: 'open',
     },
   ]
 

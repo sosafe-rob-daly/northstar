@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { ChevronDown, ChevronRight, Unlink } from 'lucide-react'
 import { useOkrStore } from '../store/store'
 import { useSelectedCycle } from '../lib/useSelectedCycle'
-import type { Cycle, Objective } from '../lib/types'
+import type { Objective } from '../lib/types'
+import { longerHorizonCycles } from '../lib/cycles'
 import { computeObjective } from '../lib/selectors'
 import { Badge, Card, EmptyState } from '../components/ui'
 import { StatusChip, LifecycleChip } from '../components/StatusChip'
@@ -17,14 +18,17 @@ const LEVEL_LABEL = { company: 'Company', team: 'Team', individual: 'Individual'
  * flagged, never forced into the tree.
  */
 export function Alignment() {
-  const { objectives } = useOkrStore()
+  const { objectives, cycles } = useOkrStore()
   const cycle = useSelectedCycle()
 
   if (!cycle) return <EmptyState title="No cycles yet" hint="Create one in Settings." />
 
-  const inCycle = objectives.filter((o) => o.cycleId === cycle.id)
-  const ids = new Set(inCycle.map((o) => o.id))
-  const roots = inCycle.filter((o) => !o.parentId || !ids.has(o.parentId))
+  // The selected cycle plus any overlapping longer horizons (e.g. the year a
+  // quarter belongs to), so long-term objectives crown the tree.
+  const horizonIds = new Set([cycle.id, ...longerHorizonCycles(cycle, cycles).map((c) => c.id)])
+  const inView = objectives.filter((o) => horizonIds.has(o.cycleId))
+  const ids = new Set(inView.map((o) => o.id))
+  const roots = inView.filter((o) => !o.parentId || !ids.has(o.parentId))
   const companyRoots = roots.filter((o) => o.level === 'company')
   const orphans = roots.filter((o) => o.level !== 'company')
 
@@ -43,7 +47,7 @@ export function Alignment() {
 
       <div className="space-y-2.5">
         {companyRoots.map((o) => (
-          <TreeNode key={o.id} objective={o} all={inCycle} cycle={cycle} depth={0} />
+          <TreeNode key={o.id} objective={o} all={inView} selectedCycleId={cycle.id} depth={0} />
         ))}
       </div>
 
@@ -59,7 +63,7 @@ export function Alignment() {
           </p>
           <div className="space-y-2.5">
             {orphans.map((o) => (
-              <TreeNode key={o.id} objective={o} all={inCycle} cycle={cycle} depth={0} />
+              <TreeNode key={o.id} objective={o} all={inView} selectedCycleId={cycle.id} depth={0} />
             ))}
           </div>
         </section>
@@ -71,21 +75,23 @@ export function Alignment() {
 function TreeNode({
   objective,
   all,
-  cycle,
+  selectedCycleId,
   depth,
 }: {
   objective: Objective
   all: Objective[]
-  cycle: Cycle
+  selectedCycleId: string
   depth: number
 }) {
-  const { objectives, keyResults, checkIns, people, teams, settings } = useOkrStore()
+  const { objectives, keyResults, checkIns, people, teams, cycles, settings } = useOkrStore()
   const [expanded, setExpanded] = useState(depth < 2)
   const children = all.filter((o) => o.parentId === objective.id)
-  const computed = computeObjective(objective, objectives, keyResults, checkIns, cycle, settings)
+  const ownCycle = cycles.find((c) => c.id === objective.cycleId)!
+  const computed = computeObjective(objective, objectives, keyResults, checkIns, ownCycle, settings)
   const owner = people.find((p) => p.id === objective.ownerId)
   const team = teams.find((t) => t.id === objective.teamId)
   const krCount = keyResults.filter((k) => k.objectiveId === objective.id).length
+  const isOtherHorizon = objective.cycleId !== selectedCycleId
 
   return (
     <div style={{ marginLeft: depth === 0 ? 0 : 28 }} className={depth > 0 ? 'relative' : ''}>
@@ -117,6 +123,7 @@ function TreeNode({
               <Badge tone={objective.level === 'company' ? 'accent' : 'neutral'}>
                 {team?.name ?? LEVEL_LABEL[objective.level]}
               </Badge>
+              {isOtherHorizon && <Badge tone="violet">{ownCycle.name}</Badge>}
               <LifecycleChip lifecycle={objective.lifecycle} finalScore={objective.finalScore} />
             </div>
             <p className="text-xs text-ink-muted">
@@ -131,7 +138,13 @@ function TreeNode({
       {expanded && children.length > 0 && (
         <div className="mt-2 space-y-2 border-l border-transparent">
           {children.map((child) => (
-            <TreeNode key={child.id} objective={child} all={all} cycle={cycle} depth={depth + 1} />
+            <TreeNode
+              key={child.id}
+              objective={child}
+              all={all}
+              selectedCycleId={selectedCycleId}
+              depth={depth + 1}
+            />
           ))}
         </div>
       )}

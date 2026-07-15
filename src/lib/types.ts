@@ -2,9 +2,13 @@ export type Id = string
 
 export type CycleStatus = 'open' | 'closed'
 
+/** Time horizon of a cycle: quarterly tactical, annual strategic, or custom */
+export type CycleType = 'quarter' | 'year' | 'custom'
+
 export interface Cycle {
   id: Id
   name: string
+  type: CycleType
   startDate: string // ISO yyyy-MM-dd
   endDate: string
   status: CycleStatus
