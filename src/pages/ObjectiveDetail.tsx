@@ -12,7 +12,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useOkrStore } from '../store/store'
-import type { KeyResult } from '../lib/types'
+import type { KeyResult, ObjectiveLifecycle } from '../lib/types'
 import {
   krProgress,
   krStatus,
@@ -29,6 +29,7 @@ import { Sparkline } from '../components/Sparkline'
 import { CheckInForm } from '../components/CheckInForm'
 import { ObjectiveForm } from '../components/ObjectiveForm'
 import { CloseObjectiveModal } from '../components/CloseObjectiveModal'
+import { KrEditModal } from '../components/KrEditModal'
 
 const LEVEL_LABEL = { company: 'Company', team: 'Team', individual: 'Individual' } as const
 const BAND_COLOR = {
@@ -178,7 +179,7 @@ export function ObjectiveDetail() {
         <div className="space-y-3">
           {krs.length === 0 && <EmptyState title="No key results" hint="Edit the objective to add measurable outcomes." />}
           {krs.map((kr) => (
-            <KrDetailCard key={kr.id} kr={kr} readonly={!isActive} cycleId={cycle.id} />
+            <KrDetailCard key={kr.id} kr={kr} lifecycle={objective.lifecycle} cycleId={cycle.id} />
           ))}
         </div>
       </section>
@@ -222,12 +223,24 @@ export function ObjectiveDetail() {
   )
 }
 
-function KrDetailCard({ kr, readonly, cycleId }: { kr: KeyResult; readonly: boolean; cycleId: string }) {
+function KrDetailCard({
+  kr,
+  lifecycle,
+  cycleId,
+}: {
+  kr: KeyResult
+  lifecycle: ObjectiveLifecycle
+  cycleId: string
+}) {
   const store = useOkrStore()
   const { checkIns, people, initiatives, cycles, settings } = store
   const [checkingIn, setCheckingIn] = useState(false)
+  const [editing, setEditing] = useState(false)
   const [newInitiative, setNewInitiative] = useState('')
   const [showHistory, setShowHistory] = useState(false)
+
+  const isActive = lifecycle === 'active'
+  const canEdit = lifecycle !== 'closed'
 
   const cycle = cycles.find((c) => c.id === cycleId)!
   const history = checkInsForKr(checkIns, kr.id)
@@ -266,16 +279,16 @@ function KrDetailCard({ kr, readonly, cycleId }: { kr: KeyResult; readonly: bool
             >
               {formatScore(kr.finalScore)}
             </span>
-          ) : (
+          ) : isActive ? (
             <StatusChip status={status} small />
-          )}
+          ) : null}
         </div>
       </div>
 
       <div className="mt-2.5 flex items-center gap-2.5">
         <ProgressBar
           value={progress}
-          expected={!readonly && cycle.status === 'open' ? expectedProgress(cycle) : undefined}
+          expected={isActive && cycle.status === 'open' ? expectedProgress(cycle) : undefined}
           className="flex-1"
         />
         <span className="text-xs font-semibold text-ink tabular-nums">{formatPercent(progress)}</span>
@@ -291,7 +304,7 @@ function KrDetailCard({ kr, readonly, cycleId }: { kr: KeyResult; readonly: bool
         </p>
       )}
 
-      {(krInitiatives.length > 0 || !readonly) && (
+      {(krInitiatives.length > 0 || canEdit) && (
         <div className="mt-3 border-t border-grid pt-2.5">
           <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
             Initiatives
@@ -304,12 +317,12 @@ function KrDetailCard({ kr, readonly, cycleId }: { kr: KeyResult; readonly: bool
                     type="checkbox"
                     checked={init.done}
                     onChange={() => store.toggleInitiative(init.id)}
-                    disabled={readonly}
+                    disabled={!canEdit}
                     className="accent-[var(--color-accent)]"
                   />
                   <span className={init.done ? 'text-ink-muted line-through' : ''}>{init.title}</span>
                 </label>
-                {!readonly && (
+                {canEdit && (
                   <button
                     type="button"
                     onClick={() => store.deleteInitiative(init.id)}
@@ -321,7 +334,7 @@ function KrDetailCard({ kr, readonly, cycleId }: { kr: KeyResult; readonly: bool
                 )}
               </div>
             ))}
-            {!readonly && (
+            {canEdit && (
               <form
                 className="flex items-center gap-2"
                 onSubmit={(e) => {
@@ -346,10 +359,34 @@ function KrDetailCard({ kr, readonly, cycleId }: { kr: KeyResult; readonly: bool
       )}
 
       <div className="mt-3 flex items-center gap-3 border-t border-grid pt-2.5">
-        {!readonly && cycle.status === 'open' && (
+        {isActive && cycle.status === 'open' && (
           <Button variant="primary" onClick={() => setCheckingIn((v) => !v)} className="!px-2.5 !py-1 !text-xs">
             <PencilLine size={13} /> Check in
           </Button>
+        )}
+        {canEdit && (
+          <>
+            <Button onClick={() => setEditing(true)} className="!px-2.5 !py-1 !text-xs">
+              Edit
+            </Button>
+            <button
+              type="button"
+              onClick={() => {
+                const extras = [
+                  history.length > 0 && `${history.length} check-in${history.length === 1 ? '' : 's'}`,
+                  krInitiatives.length > 0 &&
+                    `${krInitiatives.length} initiative${krInitiatives.length === 1 ? '' : 's'}`,
+                ].filter(Boolean)
+                const suffix = extras.length > 0 ? ` This also removes its ${extras.join(' and ')}.` : ''
+                if (window.confirm(`Delete key result "${kr.title}"?${suffix}`))
+                  store.deleteKeyResult(kr.id)
+              }}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-ink-muted hover:bg-black/5 hover:text-status-critical"
+              aria-label={`Delete ${kr.title}`}
+            >
+              <Trash2 size={13} /> Delete
+            </button>
+          </>
         )}
         {history.length > 0 && (
           <button
@@ -360,7 +397,7 @@ function KrDetailCard({ kr, readonly, cycleId }: { kr: KeyResult; readonly: bool
             {showHistory ? 'Hide' : 'Show'} history ({history.length})
           </button>
         )}
-        {!readonly && Number.isFinite(staleDays) && staleDays > settings.staleDays && (
+        {isActive && Number.isFinite(staleDays) && staleDays > settings.staleDays && (
           <span className="text-xs text-ink-muted">Last check-in {staleDays} days ago</span>
         )}
       </div>
@@ -370,6 +407,8 @@ function KrDetailCard({ kr, readonly, cycleId }: { kr: KeyResult; readonly: bool
           <CheckInForm kr={kr} defaultStatus={status} onDone={() => setCheckingIn(false)} />
         </div>
       )}
+
+      {editing && <KrEditModal kr={kr} onClose={() => setEditing(false)} />}
 
       {showHistory && (
         <div className="mt-3 space-y-2.5">
